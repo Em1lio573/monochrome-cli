@@ -111,6 +111,7 @@ def display_settings_table():
     table.add_row("Directorio de Descargas", str(config.download_directory), "Carpeta donde se guardará la música")
     table.add_row("Formato por Defecto", config.default_format.display_name, "Calidad y extensión de audio")
     table.add_row("Motor Lossless Nativo", "Activado (Amazon/Tidal/Deezer)" if config.prefer_lossless_source else "Desactivado", "Descarga Lossless de alta fidelidad")
+    table.add_row("Token Amazon Music", "✔ Configurado" if config.turnstile_jwt else "(Opcional) No configurado", "Sesión para Amazon Music Ultra HD")
     table.add_row("Fallback de YouTube", "Activado" if config.allow_youtube_fallback else "Desactivado", "Descarga alternativa si no hay Lossless")
     table.add_row("Incrustar Portadas HD", "Sí" if config.embed_cover else "No", "Guarda la carátula en el archivo")
     table.add_row("Resolución de Portada", f"{config.cover_resolution}x{config.cover_resolution} px", "Tamaño de imagen álbum")

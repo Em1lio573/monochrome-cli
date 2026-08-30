@@ -145,10 +145,11 @@ def configure_settings_interactive():
         console.print("  [yellow]6[/yellow] - Cambiar Plantilla de Carpetas y Nombres")
         console.print("  [yellow]8[/yellow] - Activar / Desactivar Motor Lossless Nativo (Amazon/Tidal/Deezer)")
         console.print("  [yellow]9[/yellow] - Activar / Desactivar Fallback a YouTube Music")
+        console.print("  [yellow]10[/yellow] - Configurar Token de Amazon Music Ultra HD (Opcional)")
         console.print("  [yellow]7[/yellow] - Restaurar Valores de Fábrica")
         console.print("  [yellow]q[/yellow] - Volver al Menú Principal\n")
 
-        ans = Prompt.ask("[bold yellow]Selecciona una opción (1-9 o q)[/bold yellow]", default="q").strip()
+        ans = Prompt.ask("[bold yellow]Selecciona una opción (1-10 o q)[/bold yellow]", default="q").strip()
         if ans == "1":
             new_dir = Prompt.ask("Nueva ruta de descargas", default=str(config.download_directory))
             config.download_directory = new_dir
@@ -185,6 +186,14 @@ def configure_settings_interactive():
             config.allow_youtube_fallback = new_state
             status_text = "ACTIVADO (Descargará de YouTube si no hay Lossless)" if new_state else "DESACTIVADO (Fallará si no hay Lossless)"
             console.print(f"[bold green]✔ Fallback a YouTube: {status_text}[/bold green]\n")
+        elif ans == "10":
+            console.print("\n[dim]Token Turnstile JWT de Monochrome Web (monochrome.tf -> localStorage.unified_turnstile_jwt)[/dim]")
+            token_input = Prompt.ask("Pega tu Token Turnstile (o presiona Enter para limpiar)", default=config.turnstile_jwt or "")
+            config.turnstile_jwt = token_input.strip() or None
+            if config.turnstile_jwt:
+                console.print("[bold green]✔ Token de Amazon Music Ultra HD configurado.[/bold green]\n")
+            else:
+                console.print("[yellow]Token eliminado. Se usarán las fuentes de alta calidad por defecto.[/yellow]\n")
         elif ans == "7":
             confirm = Prompt.ask("[bold red]¿Restaurar toda la configuración por defecto? (s/n)[/bold red]", default="n")
             if confirm.lower() in ("s", "si", "y", "yes"):
@@ -352,11 +361,19 @@ def cli_entrypoint():
     parser.add_argument("--set-default-format", help="Establecer formato predeterminado permanente (flac, mp3_320, m4a, opus)")
     parser.add_argument("--set-default-lyrics", choices=["true", "false"], help="Establecer si siempre descargar letras por defecto (true/false)")
     parser.add_argument("--set-default-output", help="Establecer carpeta de descargas predeterminada permanente")
+    parser.add_argument("--jwt", "--auth", dest="set_jwt", type=str, help="Configurar opcionalmente Token Turnstile para Amazon Music Ultra HD")
     parser.add_argument("--config", action="store_true", help="Abrir menú de configuración interactivo")
 
     args = parser.parse_args()
 
     # Handle persistent settings changes via CLI flags
+    if args.set_jwt is not None:
+        config.turnstile_jwt = args.set_jwt.strip() or None
+        if config.turnstile_jwt:
+            console.print("[bold green]✔ Token de Amazon Music Ultra HD guardado con éxito.[/bold green]")
+        else:
+            console.print("[yellow]Token de Amazon Music eliminado.[/yellow]")
+        return
     if args.set_default_format:
         config.default_format = AudioFormat.from_string(args.set_default_format)
         console.print(f"[bold green]✔ Formato predeterminado guardado:[/bold green] {config.default_format.display_name}")
