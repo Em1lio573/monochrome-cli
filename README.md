@@ -1,60 +1,92 @@
-# 🎵 Monochrome CLI (Terminal & Termux)
+# Monochrome CLI
 
-<p align="center">
-  <strong>Versión de terminal (CLI / TUI) optimizada para Termux (Android), Linux y macOS.</strong><br>
-  Inspirada en el proyecto original <a href="https://github.com/monochrome-music/monochrome">Monochrome</a>.
-</p>
+Cliente de terminal y TUI (Text User Interface) para busqueda, descarga y gestion de audio de alta fidelidad, optimizado para entornos Linux, macOS y Termux (Android).
 
----
-
-## 🌟 Características Principales
-
-- 🔍 **Búsqueda Hi-Res:** Catálogo amplio y preciso impulsado por Tidal y Deezer.
-- 🎛️ **Formatos y Calidades Seleccionables:**
-  - **FLAC:** Lossless / Hi-Res Audio (16/24-bit sin pérdida).
-  - **MP3 320k:** Máxima fidelidad en formato MP3 (CBR).
-  - **MP3 256k / 128k:** VBR de alta calidad o ahorro de espacio.
-  - **M4A / AAC:** Estándar de alta fidelidad Apple / AAC (256 kbps).
-  - **OPUS:** Codec de compresión ultra-eficiente de alta definición (160 kbps).
-- 🖼️ **Carátulas en HD (1280x1280):** Incrustadas directamente en los metadatos de los archivos (ID3v2.4 / Vorbis Picture block / MP4 covr atom).
-- 🎤 **Letras Sincronizadas (.lrc):** Descarga de letras con marcas de tiempo milimétricas e incrustación en etiquetas de audio.
-- 🛡️ **Sistema Antiduplicados:** Detección instantánea de canciones ya descargadas para ahorrar ancho de banda y espacio.
-- 📦 **Descargas por Lote:** Descarga canciones individuales, selecciones múltiples (`1-5`, `1,3,6`), o álbumes enteros ordenados por pista.
-- ⚙️ **Preferencias Fijas:** Menú interactivo y comandos CLI para guardar tus ajustes favoritos por defecto.
+Inspirado en el ecosistema de codigo abierto Monochrome.
 
 ---
 
-## 📱 Instalación en Termux (Android)
+## Caracteristicas del Sistema
 
-### 1. Instalador Automático de 1 Comando
-Abre **Termux** y ejecuta:
+- **Consultas de Catalogo Oficial:** Integracion con Tidal OpenAPI y Deezer para la obtencion precisa de metadatos de estudio, codigos ISRC, creditos y discografias completas.
+- **Motor de Audio de Alta Fidelidad:**
+  - **FLAC (Lossless / Hi-Res):** Audio de estudio sin perdidas (16/24-bit, 44.1 kHz hasta 192 kHz).
+  - **MP3 (320 kbps CBR):** Codificacion a bitrate constante de maxima calidad con `libmp3lame`.
+  - **M4A / AAC (256 kbps):** Codificacion con perfil avanzado de compresion perceptual de alta definicion.
+  - **OPUS (160 kbps):** Compresion de ultima generacion optimizada para preservacion del espectro audible.
+- **Incrustacion de Metadatos y Caratulas en Alta Resolucion:**
+  - Caratulas oficiales en resolucion nativa (1280x1280 px).
+  - Etiquetas incrustadas mediante Mutagen (ID3v2.4 para MP3, Vorbis Comments / Picture Block para FLAC y Ogg, MP4 Atoms para M4A).
+- **Letras Sincronizadas (.lrc):**
+  - Descarga e integracion de letras sincronizadas milimetricamente mediante LRCLIB.
+  - Generacion automatica de archivos `.lrc` compatibles con reproductores de audio locales y moviles.
+- **Deteccion Inteligente de Duplicados:**
+  - Evita descargas redundantes verificando la existencia e integridad del archivo en disco antes de procesar el stream.
+- **Gestion de Descargas Individuales y por Lotes:**
+  - Soporte para descargas puntuales, rangos numericos (ej. `1-5`), selecciones separadas por comas (ej. `1,3,7`), o albumes completos respetando el orden original de pistas.
+- **Compatibilidad Optimizada con Termux en Android:**
+  - Creacion automatica de lanzadores globales en `$PREFIX/bin`.
+  - Deteccion nativa del almacenamiento compartido de Android (`/sdcard/Music` y `~/storage/shared/Music`).
+
+---
+
+## Requisitos del Sistema
+
+- **Python:** Version 3.8 o superior.
+- **FFmpeg:** Con soporte para decodificacion y extraccion de audio.
+- **Git:** Para clonar el repositorio.
+
+---
+
+## Instalacion
+
+### 1. Instalacion en Termux (Android)
+
+#### Metodo Automatico (Recomendado)
+Ejecute en la terminal de Termux:
+
 ```bash
 git clone https://github.com/Em1lio573/monochrome-cli.git
 cd monochrome-cli
 bash install_termux.sh
 ```
 
-### 2. Instalación Manual
+El script actualizara los paquetes necesarios, solicitara acceso al almacenamiento de Android (`termux-setup-storage`), instalara las dependencias de Python y configurara los ejecutables globales `mono` y `monochrome` en `$PREFIX/bin`.
+
+#### Metodo Manual
 ```bash
-pkg update -y && pkg install -y python ffmpeg git
+pkg update -y
+pkg install -y python ffmpeg git libjpeg-turbo
 termux-setup-storage
-pip install yt-dlp mutagen rich requests
+pip install --upgrade pip
+pip install yt-dlp mutagen rich requests setuptools
 pip install -e .
 ```
 
-*En Android, las canciones se guardarán automáticamente en tu carpeta de música del sistema (`/sdcard/Music/` o `~/storage/shared/Music/`).*
-
 ---
 
-## 💻 Instalación en Linux / macOS
+### 2. Instalacion en Linux y macOS
 
+#### Dependencias Previas
+- **Debian / Ubuntu / Linux Mint:**
+  ```bash
+  sudo apt update && sudo apt install -y ffmpeg python3 python3-pip git
+  ```
+- **Arch Linux / Manjaro:**
+  ```bash
+  sudo pacman -S ffmpeg python python-pip git
+  ```
+- **Fedora / RHEL:**
+  ```bash
+  sudo dnf install -y ffmpeg python3 python3-pip git
+  ```
+- **macOS (via Homebrew):**
+  ```bash
+  brew install ffmpeg python git
+  ```
+
+#### Instalacion del Paquete
 ```bash
-# 1. Instalar FFmpeg y Python
-sudo apt install ffmpeg python3-pip   # Ubuntu / Debian
-sudo pacman -S ffmpeg python-pip     # Arch Linux
-brew install ffmpeg python           # macOS
-
-# 2. Clonar e instalar
 git clone https://github.com/Em1lio573/monochrome-cli.git
 cd monochrome-cli
 pip install -e .
@@ -62,70 +94,136 @@ pip install -e .
 
 ---
 
-## 🎮 Guía de Uso
+## Guia de Uso
 
-### 1. Modo Interactivo TUI (Recomendado)
-Simplemente ejecuta:
+### 1. Modo Interactivo (TUI)
+
+Para iniciar la interfaz de terminal interactiva, ejecute:
+
 ```bash
 mono
 ```
-- Escribe el nombre de la canción, álbum o artista.
-- Selecciona el número `#` de la pista deseada (o escribe `all` o `1-5`).
-- Presiona `Enter` para descargar con tus opciones por defecto, o escribe `c` para cambiar el formato o activar/desactivar letras al momento.
-- Escribe `fmt` para cambiar el formato activo.
-- Escribe `config` para abrir el panel de configuración.
+
+#### Comandos Disponibles dentro del Modo Interactivo:
+- **`nombre_de_pista`**: Realiza una busqueda en el catalogo y despliega las coincidencias.
+- **`numero_de_pista`**: Descarga la pista correspondiente (ej. `1`, `2`, `3`).
+- **`all`**: Descarga todas las pistas encontradas en la busqueda.
+- **`1-5` o `1,3,4`**: Descarga una seleccion especifica de resultados.
+- **`fmt`**: Abre el menu para cambiar el formato de audio activo.
+- **`config`**: Abre el panel de configuracion y preferencias.
+- **`q`**: Sale de la aplicacion.
 
 ---
 
-### 2. Modo Comando Directo (CLI)
+### 2. Modo Linea de Comandos (CLI)
 
+#### Descarga Directa
 ```bash
-# Descargar primer resultado en formato específico
-mono "daft punk get lucky" -d -f flac
-mono "the weeknd starboy" -d -f mp3_320
-mono "dua lipa levitating" -d -f m4a
+# Descargar el primer resultado coincidente en formato FLAC
+mono "Daft Punk Get Lucky" -d -f flac
 
-# Descargar con o sin letras sincronizadas
-mono "queen bohemian rhapsody" -d --no-lyrics
-mono "queen bohemian rhapsody" -d --lyrics
+# Descargar en formato MP3 a 320 kbps
+mono "The Weeknd Blinding Lights" -d -f mp3_320
 
-# Descargar un álbum completo
-mono "tainy data" -a -f mp3_320
+# Descargar en formato M4A (AAC 256 kbps)
+mono "Dua Lipa Levitating" -d -f m4a
 
-# Forzar re-descarga si ya existe
-mono "daft punk get lucky" -d -w
+# Descargar en formato OPUS
+mono "Queen Bohemian Rhapsody" -d -f opus
+```
+
+#### Descarga de Albumes Completos
+```bash
+# Buscar y descargar todas las pistas de un album
+mono "Bad Bunny YHLQMDLG" -a -f flac
+```
+
+#### Opciones de Letras Sincronizadas
+```bash
+# Forzar descarga de letras sincronizadas (.lrc)
+mono "Ed Sheeran Shape of You" -d --lyrics
+
+# Desactivar descarga de letras sincronizadas
+mono "Ed Sheeran Shape of You" -d --no-lyrics
+```
+
+#### Sobrescribir Archivos Existentes
+```bash
+mono "Daft Punk Around the World" -d -w
 ```
 
 ---
 
-### ⚙️ Guardar Preferencias Predeterminadas
+## Configuracion Persistente
+
+Monochrome CLI almacena las preferencias de usuario en `~/.config/monochrome-cli/config.json`. Puede modificarlas mediante el menu interactivo (`mono --config`) o mediante flags de linea de comandos:
 
 ```bash
-# Establecer formato preferido para siempre (flac, mp3_320, mp3_256, m4a, opus)
+# Establecer el formato de descarga predeterminado
 mono --set-default-format flac
+mono --set-default-format mp3_320
+mono --set-default-format m4a
+mono --set-default-format opus
 
-# Establecer si siempre descargar letras (.lrc) o no
+# Establecer la carpeta de destino predeterminada
+mono --set-default-output "/home/usuario/Musica"
+
+# Activar o desactivar letras sincronizadas por defecto
 mono --set-default-lyrics true
+mono --set-default-lyrics false
 
-# Establecer carpeta de descargas permanente
-mono --set-default-output /sdcard/Music
-
-# Menú de configuración interactivo
-mono --config
+# Configurar opcionalmente el token de sesion para Amazon Music Ultra HD
+mono --jwt "<TOKEN_TURNSTILE>"
 ```
 
 ---
 
-## 🙏 Créditos y Reconocimientos
+## Formatos de Audio y Especificaciones Tecnicas
 
-Este proyecto está inspirado y construido con admiración hacia **[Monochrome Music](https://github.com/monochrome-music/monochrome)**:
-- Proyecto original: [monochrome-music/monochrome](https://github.com/monochrome-music/monochrome)
-- Sitio web oficial: [monochrome.tf](https://monochrome.tf)
-
-Todos los derechos y créditos de diseño de metadatos pertenecen a los creadores originales de Monochrome.
+| Formato | Extension | Bitrate / Profundidad | Codec de Salida | Uso Recomendado |
+| :--- | :---: | :---: | :---: | :--- |
+| **FLAC** | `.flac` | 16/24-bit (1.400 - 9.200 kbps) | FLAC | Audio de maxima fidelidad sin perdidas (Audiophile). |
+| **MP3 320k** | `.mp3` | 320 kbps CBR | libmp3lame | Maxima compatibilidad universal con alta calidad. |
+| **M4A** | `.m4a` | 256 kbps VBR/CBR | AAC (libfdk_aac/aac) | Ecosistema Apple y dispositivos moviles. |
+| **OPUS** | `.opus` | 160 kbps VBR | libopus | Maxima eficiencia de almacenamiento con fidelidad perceptual. |
+| **MP3 256k / 128k** | `.mp3` | 256 / 128 kbps | libmp3lame | Ahorro de espacio en disco. |
 
 ---
 
-## 📄 Licencia
+## Estructura del Proyecto
 
-Este proyecto se distribuye bajo la licencia **GNU General Public License v3.0 (GPL-3.0)**, al igual que el proyecto Monochrome original.
+```text
+monochrome-cli/
+├── mono.py                     # Lanzador principal del ejecutable
+├── setup.py                    # Configuracion de empaquetado pip
+├── install_termux.sh           # Instalador automatizado para Termux (Android)
+├── monochrome_cli/
+│   ├── main.py                 # Punto de entrada CLI y control de flujo TUI
+│   ├── config.py               # Gestion de configuracion persistente
+│   ├── types.py                # Modelos de datos y definiciones de formato
+│   ├── core/
+│   │   ├── search.py           # Buscador en catalogo oficial de Tidal y Deezer
+│   │   ├── unified.py          # Motor de resolucion y descifrado Lossless
+│   │   ├── downloader.py       # Gestor de streams, conversiones y fallbacks
+│   │   ├── tagger.py           # Inyeccion de metadatos y caratulas en alta resolucion
+│   │   └── lyrics.py           # Descarga y formateo de letras sincronizadas (.lrc)
+│   ├── ui/
+│   │   ├── banner.py           # Presentacion visual de terminal
+│   │   └── tables.py           # Tablas de resultados, configuracion y formatos
+│   └── utils/
+│       ├── platform.py         # Deteccion de plataforma (Android, Termux, Linux, macOS)
+│       └── template.py         # Generador de rutas y nombres segun plantilla
+└── tests/                      # Suite de pruebas automatizadas
+    ├── test_search.py
+    ├── test_lyrics.py
+    ├── test_tagger.py
+    ├── test_downloader.py
+    ├── test_unified_downloader.py
+    └── test_famous_tracks.py
+```
+
+---
+
+## Licencia
+
+Este proyecto esta desarrollado con fines educativos y de gestion de bibliotecas de audio personales.\n
