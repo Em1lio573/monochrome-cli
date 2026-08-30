@@ -24,9 +24,16 @@ pip install yt-dlp mutagen rich requests setuptools
 echo ""
 echo "[4/4] Configurando comando global 'mono' y 'monochrome'..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-pip install -e "$SCRIPT_DIR/cli" || true
+pip install -e "$SCRIPT_DIR" || true
 
-# Configurar alias directo de respaldo en bashrc
+# Crear ejecutables directos en $PREFIX/bin de Termux
+if [ -n "$PREFIX" ] && [ -d "$PREFIX/bin" ]; then
+    ln -sf "$SCRIPT_DIR/mono.py" "$PREFIX/bin/mono"
+    ln -sf "$SCRIPT_DIR/mono.py" "$PREFIX/bin/monochrome"
+    chmod +x "$SCRIPT_DIR/mono.py" "$PREFIX/bin/mono" "$PREFIX/bin/monochrome" 2>/dev/null || true
+fi
+
+# Configurar alias directo de respaldo en bashrc y zshrc
 ALIAS_LINE="alias mono='python3 $SCRIPT_DIR/mono.py'"
 ALIAS_LINE2="alias monochrome='python3 $SCRIPT_DIR/mono.py'"
 

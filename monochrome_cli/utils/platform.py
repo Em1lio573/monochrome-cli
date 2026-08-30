@@ -23,14 +23,30 @@ def get_default_music_dir() -> Path:
     termux_shared = Path(os.path.expanduser('~/storage/shared/Music'))
     if termux_shared.exists() and os.access(termux_shared, os.W_OK):
         return termux_shared
+    elif Path(os.path.expanduser('~/storage/shared')).exists():
+        try:
+            termux_shared.mkdir(parents=True, exist_ok=True)
+            return termux_shared
+        except Exception:
+            pass
 
     # 2. Check direct /sdcard/Music
     sdcard_music = Path('/sdcard/Music')
     if sdcard_music.exists() and os.access(sdcard_music, os.W_OK):
         return sdcard_music
+    elif Path('/sdcard').exists():
+        try:
+            sdcard_music.mkdir(parents=True, exist_ok=True)
+            return sdcard_music
+        except Exception:
+            pass
 
     # 3. Standard Linux / macOS ~/Music
     user_music = Path(os.path.expanduser('~/Music/Monochrome'))
+    try:
+        user_music.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
     return user_music
 
 

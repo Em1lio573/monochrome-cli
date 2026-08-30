@@ -105,11 +105,11 @@ class TestUnifiedEngine(unittest.TestCase):
         print("  ✔ Deezer ISRC Fallback resolution verified!")
 
     @patch("monochrome_cli.core.unified.UnifiedEngine.resolve_stream")
-    @patch("monochrome_cli.core.downloader.Downloader._download_from_youtube")
+    @patch("monochrome_cli.core.downloader.Downloader._download_from_soundcloud")
     @patch("monochrome_cli.core.tagger.MetadataTagger.apply_metadata")
-    def test_downloader_fallback_to_youtube(self, mock_tagger, mock_yt, mock_resolve):
+    def test_downloader_fallback_to_soundcloud(self, mock_tagger, mock_sc, mock_resolve):
         mock_resolve.return_value = None  # Lossless not available
-        mock_yt.return_value = True  # YouTube succeeds
+        mock_sc.return_value = True  # SoundCloud succeeds
 
         with tempfile.TemporaryDirectory() as tmpdir:
             track = TrackMetadata(
@@ -133,9 +133,8 @@ class TestUnifiedEngine(unittest.TestCase):
             self.assertTrue(is_new)
             self.assertIsNotNone(track.stream_resolution)
             self.assertTrue(track.stream_resolution.is_fallback)
-            self.assertEqual(track.stream_resolution.source, "youtube")
-            self.assertTrue(any("No disponible en Lossless" in m for m in status_messages))
-            print("  ✔ Fallback to YouTube warning and metadata tracking verified!")
+            self.assertEqual(track.stream_resolution.source, "soundcloud")
+            print("  ✔ Fallback to SoundCloud HQ and metadata tracking verified!")
 
 
 if __name__ == "__main__":

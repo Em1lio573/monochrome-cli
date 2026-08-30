@@ -150,6 +150,15 @@ class Config:
     def notify_fallback_source(self, val: bool) -> None:
         self.set("notify_fallback_source", bool(val))
 
+    @property
+    def turnstile_jwt(self) -> Optional[str]:
+        val = self.get("turnstile_jwt", "")
+        return str(val).strip() if val else None
+
+    @turnstile_jwt.setter
+    def turnstile_jwt(self, val: Optional[str]) -> None:
+        self.set("turnstile_jwt", str(val).strip() if val else "")
+
 
 # Global singleton instance
 config = Config()

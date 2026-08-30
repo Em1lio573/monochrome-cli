@@ -1,5 +1,5 @@
 """
-Audio stream downloader and post-processor using Unified Engine, FFmpeg, Mutagen, and yt-dlp.
+Audio stream downloader and post-processor using Unified Engine, SoundCloud HQ, FFmpeg, Mutagen, and yt-dlp.
 """
 import os
 import shutil
@@ -19,7 +19,7 @@ from monochrome_cli.utils.template import format_track_path
 
 class Downloader:
     @staticmethod
-    def _create_yt_dlp_params(
+    def _create_ytdl_params(
         temp_dir: Path,
         audio_format: AudioFormat,
         progress_hook: Optional[Callable[[dict], None]] = None
@@ -43,17 +43,66 @@ class Downloader:
             "noprogress": True,
             "postprocessors": postprocessors,
             "prefer_ffmpeg": True,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["web", "android"]
-                }
-            },
         }
 
         if progress_hook:
             ydl_opts["progress_hooks"] = [progress_hook]
 
         return ydl_opts
+
+    @classmethod
+    def _download_from_soundcloud(
+        cls,
+        track: TrackMetadata,
+        final_path: Path,
+        fmt: AudioFormat,
+        progress_callback: Optional[Callable[[float, str], None]] = None
+    ) -> bool:
+        """
+        Downloads highest quality audio from SoundCloud HQ without captcha blocks.
+        """
+        queries = [
+            f"scsearch1:{track.artist} - {track.title}",
+            f"scsearch1:{track.title} {track.artist}",
+        ]
+
+        with tempfile.TemporaryDirectory() as temp_dir_str:
+            temp_dir = Path(temp_dir_str)
+
+            def sc_hook(d):
+                if progress_callback and d.get("status") == "downloading":
+                    total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
+                    downloaded = d.get("downloaded_bytes", 0)
+                    percent = (downloaded / total * 100) if total > 0 else 50.0
+                    speed = d.get("_speed_str", "")
+                    progress_callback(percent, f"Descargando stream HQ {speed}...")
+                elif progress_callback and d.get("status") == "finished":
+                    progress_callback(90.0, "Procesando audio y metadatos...")
+
+            opts = cls._create_ytdl_params(temp_dir, fmt, sc_hook)
+
+            for q in queries:
+                try:
+                    with yt_dlp.YoutubeDL(opts) as ydl:
+                        if progress_callback:
+                            progress_callback(20.0, "Buscando stream HQ en SoundCloud...")
+                        info = ydl.extract_info(q, download=True)
+                        if info and "entries" in info and len(info["entries"]) > 0:
+                            break
+                except Exception:
+                    continue
+
+            temp_files = list(temp_dir.glob(f"*.{fmt.extension}"))
+            if not temp_files:
+                temp_files = list(temp_dir.glob("*.*"))
+
+            if not temp_files:
+                return False
+
+            source_temp_file = temp_files[0]
+            final_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(source_temp_file), str(final_path))
+            return final_path.exists() and final_path.stat().st_size > 1024
 
     @classmethod
     def _download_from_youtube(
@@ -80,12 +129,17 @@ class Downloader:
                 elif progress_callback and d.get("status") == "finished":
                     progress_callback(90.0, "Procesando audio y metadatos...")
 
-            opts = cls._create_yt_dlp_params(temp_dir, fmt, ytdl_hook)
+            opts = cls._create_ytdl_params(temp_dir, fmt, ytdl_hook)
+            opts["extractor_args"] = {
+                "youtube": {
+                    "player_client": ["android", "web"]
+                }
+            }
 
             try:
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     if progress_callback:
-                        progress_callback(20.0, "Buscando audio alternativo en YouTube Music...")
+                        progress_callback(20.0, "Buscando audio en YouTube...")
                     info = ydl.extract_info(query, download=True)
                     if not info or "entries" not in info or len(info["entries"]) == 0:
                         fallback_query = f"ytsearch1:{track.artist} {track.title}"
@@ -102,8 +156,7 @@ class Downloader:
                 final_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.move(str(source_temp_file), str(final_path))
                 return final_path.exists() and final_path.stat().st_size > 1024
-            except Exception as e:
-                print(f"[Aviso] Fallback de YouTube falló: {e}")
+            except Exception:
                 return False
 
     @classmethod
@@ -119,7 +172,7 @@ class Downloader:
     ) -> Tuple[Optional[Path], bool]:
         """
         Downloads a track using Unified Lossless Engine (Amazon Music / Tidal / Deezer),
-        with fallback to YouTube if unavailable. Embeds metadata & cover art, and writes .lrc.
+        with high-quality SoundCloud HQ and YouTube fallbacks. Embeds metadata & cover art, and writes .lrc.
         """
         fmt = audio_format or config.default_format
         dest_dir = output_dir or config.download_directory
@@ -149,12 +202,24 @@ class Downloader:
                     progress_callback(20.0, f"Stream encontrado: {resolution.display_source}")
                 download_success = UnifiedEngine.download_stream(resolution, final_path, fmt, progress_callback)
 
-        # 2. Secondary: Fallback to YouTube if lossless failed or was not found
+        # 2. Secondary: Fallback to SoundCloud HQ (High Quality, zero captcha blocks)
         if not download_success:
-            if not config.allow_youtube_fallback:
-                if progress_callback:
-                    progress_callback(0.0, "No disponible en Lossless y fallback está desactivado.")
-                return None, False
+            if progress_callback:
+                progress_callback(15.0, "Buscando audio de alta fidelidad en SoundCloud HQ...")
+
+            resolution = StreamResolution(
+                url="soundcloud",
+                source="soundcloud",
+                quality="HQ Audio",
+                is_fallback=True,
+                provider_name="SoundCloud HQ (HQ Audio)"
+            )
+            download_success = cls._download_from_soundcloud(track, final_path, fmt, progress_callback)
+
+        # 3. Tertiary: Fallback to YouTube
+        if not download_success and config.allow_youtube_fallback:
+            if progress_callback:
+                progress_callback(15.0, "Descargando desde YouTube...")
 
             resolution = StreamResolution(
                 url="youtube",
@@ -163,9 +228,6 @@ class Downloader:
                 is_fallback=True,
                 provider_name="YouTube Music (Fallback)"
             )
-            if progress_callback:
-                progress_callback(15.0, "⚠ No disponible en Lossless. Descargando desde YouTube Music...")
-
             download_success = cls._download_from_youtube(track, final_path, fmt, progress_callback)
 
         if not download_success:
@@ -176,7 +238,7 @@ class Downloader:
         # Store stream resolution metadata on track
         track.stream_resolution = resolution
 
-        # 3. Fetch and embed lyrics if enabled
+        # 4. Fetch and embed lyrics if enabled
         if should_get_lyrics:
             if progress_callback:
                 progress_callback(94.0, "Obteniendo letras sincronizadas...")
@@ -186,7 +248,7 @@ class Downloader:
                 if config.save_lrc_file:
                     LyricsManager.save_lrc_file(lyrics_data, final_path)
 
-        # 4. Tag metadata and cover art
+        # 5. Tag metadata and cover art
         if progress_callback:
             progress_callback(98.0, "Incrustando portada HD y metadatos...")
         MetadataTagger.apply_metadata(

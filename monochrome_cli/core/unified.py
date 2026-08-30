@@ -100,6 +100,8 @@ class UnifiedEngine:
         url = f"{base_url}/api/v2/track/?{urllib.parse.urlencode(params)}"
         headers = dict(cls.DEFAULT_HEADERS)
         headers["Authorization"] = f"Bearer {token}"
+        if config.turnstile_jwt:
+            headers["X-Turnstile-JWT"] = config.turnstile_jwt
 
         try:
             req = urllib.request.Request(url, headers=headers)
