@@ -51,6 +51,12 @@ def download_single_track(
     
     if saved_file:
         if is_new:
+            res = getattr(track, "stream_resolution", None)
+            if res and res.is_fallback:
+                console.print("[bold yellow]⚠ AVISO:[/bold yellow] [yellow]No disponible en catálogo Lossless (Amazon/Tidal/Deezer).[/yellow]")
+                console.print(f"  [dim]↳ Audio descargado desde:[/dim] [yellow]{res.display_source}[/yellow]")
+            elif res:
+                console.print(f"[bold green]✔ Fuente de Audio:[/bold green] [bold cyan]{res.display_source}[/bold cyan] [dim]({res.quality})[/dim]")
             console.print(f"[bold green]✔ Guardado con éxito en:[/bold green] [yellow]{saved_file}[/yellow]\n")
         else:
             console.print(f"[bold yellow]⚡ Ya descargada (Omitida para evitar duplicados):[/bold yellow] [dim]{saved_file}[/dim]\n")
@@ -89,9 +95,15 @@ def download_batch_tracks(
             )
         
         if saved_file:
+            res = getattr(track, "stream_resolution", None)
             if is_new:
                 new_count += 1
-                console.print(f"  [green]✔ Descargado:[/green] [dim]{saved_file.name}[/dim]")
+                if res and res.is_fallback:
+                    console.print(f"  [yellow]⚠ [Fallback: {res.display_source}][/yellow] [green]✔ Descargado:[/green] [dim]{saved_file.name}[/dim]")
+                elif res:
+                    console.print(f"  [cyan]✔ [{res.display_source}][/cyan] [green]Descargado:[/green] [dim]{saved_file.name}[/dim]")
+                else:
+                    console.print(f"  [green]✔ Descargado:[/green] [dim]{saved_file.name}[/dim]")
             else:
                 skipped_count += 1
                 console.print(f"  [yellow]⚡ Ya existía (Omitido):[/yellow] [dim]{saved_file.name}[/dim]")
@@ -131,10 +143,12 @@ def configure_settings_interactive():
         console.print("  [yellow]4[/yellow] - Activar / Desactivar Incrustación de Portadas HD")
         console.print("  [yellow]5[/yellow] - Cambiar Resolución de Portada (1280x1280, 1400x1400, 640x640)")
         console.print("  [yellow]6[/yellow] - Cambiar Plantilla de Carpetas y Nombres")
+        console.print("  [yellow]8[/yellow] - Activar / Desactivar Motor Lossless Nativo (Amazon/Tidal/Deezer)")
+        console.print("  [yellow]9[/yellow] - Activar / Desactivar Fallback a YouTube Music")
         console.print("  [yellow]7[/yellow] - Restaurar Valores de Fábrica")
         console.print("  [yellow]q[/yellow] - Volver al Menú Principal\n")
 
-        ans = Prompt.ask("[bold yellow]Selecciona una opción (1-7 o q)[/bold yellow]", default="q").strip()
+        ans = Prompt.ask("[bold yellow]Selecciona una opción (1-9 o q)[/bold yellow]", default="q").strip()
         if ans == "1":
             new_dir = Prompt.ask("Nueva ruta de descargas", default=str(config.download_directory))
             config.download_directory = new_dir
@@ -161,6 +175,16 @@ def configure_settings_interactive():
             new_tmpl = Prompt.ask("Nueva plantilla", default=config.folder_template)
             config.set("folder_template", new_tmpl)
             console.print(f"[bold green]✔ Plantilla actualizada: {config.folder_template}[/bold green]\n")
+        elif ans == "8":
+            new_state = not config.prefer_lossless_source
+            config.prefer_lossless_source = new_state
+            status_text = "ACTIVADO (Priorizará Amazon HD / Tidal / Deezer)" if new_state else "DESACTIVADO (Sólo YouTube)"
+            console.print(f"[bold green]✔ Motor Lossless Nativo: {status_text}[/bold green]\n")
+        elif ans == "9":
+            new_state = not config.allow_youtube_fallback
+            config.allow_youtube_fallback = new_state
+            status_text = "ACTIVADO (Descargará de YouTube si no hay Lossless)" if new_state else "DESACTIVADO (Fallará si no hay Lossless)"
+            console.print(f"[bold green]✔ Fallback a YouTube: {status_text}[/bold green]\n")
         elif ans == "7":
             confirm = Prompt.ask("[bold red]¿Restaurar toda la configuración por defecto? (s/n)[/bold red]", default="n")
             if confirm.lower() in ("s", "si", "y", "yes"):
@@ -169,6 +193,7 @@ def configure_settings_interactive():
                 console.print("[bold green]✔ Configuración restaurada a valores de fábrica.[/bold green]\n")
         elif ans.lower() in ("q", "quit", "exit", "volver"):
             break
+
 
 
 def ask_download_customization() -> tuple:

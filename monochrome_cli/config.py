@@ -11,7 +11,7 @@ from monochrome_cli.utils.platform import get_config_dir, get_default_music_dir
 class Config:
     DEFAULT_CONFIG = {
         "download_directory": str(get_default_music_dir()),
-        "default_format": AudioFormat.MP3_320.value,
+        "default_format": AudioFormat.FLAC.value,
         "embed_cover": True,
         "cover_resolution": 1280,
         "embed_lyrics": True,
@@ -20,6 +20,12 @@ class Config:
         "search_limit": 10,
         "tidal_client_id": "txNoH4kkV41MfH25",
         "tidal_client_secret": "dQjy0MinCEvxi1O4UmxvxWnDjt4cgHBPw8ll6nYBk98=",
+        "unified_api_base_url": "https://music-api.geeked.wtf",
+        "unified_api_token": "amp_29b2lIr4mze4tK-P8QDOxfMZ9anCgJ9_uGTUks3nIyo",
+        "deezer_api_base_url": "https://dzr.tabs-vs-spaces.wtf",
+        "prefer_lossless_source": True,
+        "allow_youtube_fallback": True,
+        "notify_fallback_source": True,
     }
 
     def __init__(self):
@@ -95,6 +101,54 @@ class Config:
     @property
     def search_limit(self) -> int:
         return int(self.get("search_limit", 10))
+
+    @property
+    def unified_api_base_url(self) -> str:
+        return str(self.get("unified_api_base_url", "https://music-api.geeked.wtf"))
+
+    @unified_api_base_url.setter
+    def unified_api_base_url(self, val: str) -> None:
+        self.set("unified_api_base_url", str(val))
+
+    @property
+    def unified_api_token(self) -> str:
+        return str(self.get("unified_api_token", "amp_29b2lIr4mze4tK-P8QDOxfMZ9anCgJ9_uGTUks3nIyo"))
+
+    @unified_api_token.setter
+    def unified_api_token(self, val: str) -> None:
+        self.set("unified_api_token", str(val))
+
+    @property
+    def deezer_api_base_url(self) -> str:
+        return str(self.get("deezer_api_base_url", "https://dzr.tabs-vs-spaces.wtf"))
+
+    @deezer_api_base_url.setter
+    def deezer_api_base_url(self, val: str) -> None:
+        self.set("deezer_api_base_url", str(val))
+
+    @property
+    def prefer_lossless_source(self) -> bool:
+        return bool(self.get("prefer_lossless_source", True))
+
+    @prefer_lossless_source.setter
+    def prefer_lossless_source(self, val: bool) -> None:
+        self.set("prefer_lossless_source", bool(val))
+
+    @property
+    def allow_youtube_fallback(self) -> bool:
+        return bool(self.get("allow_youtube_fallback", True))
+
+    @allow_youtube_fallback.setter
+    def allow_youtube_fallback(self, val: bool) -> None:
+        self.set("allow_youtube_fallback", bool(val))
+
+    @property
+    def notify_fallback_source(self) -> bool:
+        return bool(self.get("notify_fallback_source", True))
+
+    @notify_fallback_source.setter
+    def notify_fallback_source(self, val: bool) -> None:
+        self.set("notify_fallback_source", bool(val))
 
 
 # Global singleton instance

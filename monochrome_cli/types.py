@@ -133,7 +133,41 @@ class AlbumMetadata:
 
 
 @dataclass
+class StreamResolution:
+    url: str
+    source: str  # 'amazon', 'tidal', 'mono', 'deezer', 'youtube'
+    quality: str  # 'HI_RES_LOSSLESS', 'LOSSLESS', 'DOLBY_ATMOS', '320k', etc.
+    codec: Optional[str] = None
+    decryption_key: Optional[str] = None
+    key_id: Optional[str] = None
+    is_cenc: bool = False
+    is_dash: bool = False
+    is_fallback: bool = False
+    bit_depth: Optional[int] = None
+    sample_rate: Optional[int] = None
+    provider_name: Optional[str] = None
+
+    @property
+    def display_source(self) -> str:
+        if self.source == "amazon":
+            res = "Amazon Music"
+            if self.is_cenc:
+                res += " (Lossless CENC Descifrado)"
+            return res
+        elif self.source == "tidal":
+            return "Tidal Hi-Fi (Lossless)"
+        elif self.source == "mono" or self.source == "monochrome":
+            return "Monochrome CDN (Lossless)"
+        elif self.source == "deezer":
+            return "Deezer (Lossless Fallback)"
+        elif self.source == "youtube":
+            return "YouTube Music (Fallback)"
+        return self.source.capitalize()
+
+
+@dataclass
 class SearchResult:
     tracks: List[TrackMetadata] = field(default_factory=list)
     albums: List[AlbumMetadata] = field(default_factory=list)
     query: str = ""
+

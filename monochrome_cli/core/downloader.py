@@ -1,5 +1,5 @@
 """
-Audio stream downloader and post-processor using yt-dlp, FFmpeg, and Mutagen.
+Audio stream downloader and post-processor using Unified Engine, FFmpeg, Mutagen, and yt-dlp.
 """
 import os
 import shutil
@@ -12,7 +12,8 @@ import yt_dlp
 from monochrome_cli.config import config
 from monochrome_cli.core.lyrics import LyricsManager
 from monochrome_cli.core.tagger import MetadataTagger
-from monochrome_cli.types import AudioFormat, TrackMetadata
+from monochrome_cli.core.unified import UnifiedEngine
+from monochrome_cli.types import AudioFormat, StreamResolution, TrackMetadata
 from monochrome_cli.utils.template import format_track_path
 
 
@@ -25,7 +26,6 @@ class Downloader:
     ) -> dict:
         ffmpeg_info = audio_format.ffmpeg_args
         ext = ffmpeg_info["ext"]
-        preferred_codec = ffmpeg_info["codec"]
         bitrate = ffmpeg_info.get("bitrate")
 
         postprocessors = [{
@@ -56,34 +56,13 @@ class Downloader:
         return ydl_opts
 
     @classmethod
-    def download_track(
+    def _download_from_youtube(
         cls,
         track: TrackMetadata,
-        audio_format: Optional[AudioFormat] = None,
-        output_dir: Optional[Path] = None,
-        progress_callback: Optional[Callable[[float, str], None]] = None,
-        overwrite: bool = False,
-        include_lyrics: Optional[bool] = None,
-        include_cover: Optional[bool] = None,
-    ) -> Tuple[Optional[Path], bool]:
-        """
-        Downloads a track, converts it, embeds metadata & cover art, and writes .lrc.
-        """
-        fmt = audio_format or config.default_format
-        dest_dir = output_dir or config.download_directory
-        final_path = format_track_path(track, dest_dir, fmt, config.folder_template)
-
-        # Duplicate check
-        if not overwrite and final_path.exists() and final_path.stat().st_size > 1024:
-            if progress_callback:
-                progress_callback(100.0, f"Ya existe en disco: {final_path.name}")
-            return final_path, False
-
-        # Resolve lyrics & cover flags
-        should_embed_cover = config.embed_cover if include_cover is None else include_cover
-        should_get_lyrics = (config.embed_lyrics or config.save_lrc_file) if include_lyrics is None else include_lyrics
-
-        # Construct query for highest precision match
+        final_path: Path,
+        fmt: AudioFormat,
+        progress_callback: Optional[Callable[[float, str], None]] = None
+    ) -> bool:
         query = f"ytsearch1:{track.artist} - {track.title} audio"
         if track.album and track.album != track.title:
             query = f"ytsearch1:{track.artist} - {track.title} {track.album} audio"
@@ -106,54 +85,119 @@ class Downloader:
             try:
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     if progress_callback:
-                        progress_callback(10.0, "Buscando mejor stream de audio...")
+                        progress_callback(20.0, "Buscando audio alternativo en YouTube Music...")
                     info = ydl.extract_info(query, download=True)
                     if not info or "entries" not in info or len(info["entries"]) == 0:
                         fallback_query = f"ytsearch1:{track.artist} {track.title}"
                         info = ydl.extract_info(fallback_query, download=True)
 
-                # Locate converted file in temp_dir
                 temp_files = list(temp_dir.glob(f"*.{fmt.extension}"))
                 if not temp_files:
                     temp_files = list(temp_dir.glob("*.*"))
 
                 if not temp_files:
-                    raise FileNotFoundError("No se encontró el archivo de audio procesado por FFmpeg")
+                    return False
 
                 source_temp_file = temp_files[0]
-
-                # Move to final path
                 final_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.move(str(source_temp_file), str(final_path))
-
-                # Fetch and embed lyrics if enabled
-                if should_get_lyrics:
-                    if progress_callback:
-                        progress_callback(95.0, "Obteniendo letras sincronizadas...")
-                    lyrics_data = LyricsManager.fetch_lyrics(track)
-                    if lyrics_data:
-                        track.lyrics = lyrics_data
-                        if config.save_lrc_file:
-                            LyricsManager.save_lrc_file(lyrics_data, final_path)
-
-                # Tag metadata and cover art
-                if progress_callback:
-                    progress_callback(98.0, "Incrustando portada HD y metadatos...")
-                MetadataTagger.apply_metadata(
-                    final_path,
-                    track,
-                    fmt,
-                    embed_cover=should_embed_cover,
-                    embed_lyrics=(config.embed_lyrics and should_get_lyrics)
-                )
-
-                if progress_callback:
-                    progress_callback(100.0, f"Completado: {final_path.name}")
-
-                return final_path, True
-
+                return final_path.exists() and final_path.stat().st_size > 1024
             except Exception as e:
+                print(f"[Aviso] Fallback de YouTube falló: {e}")
+                return False
+
+    @classmethod
+    def download_track(
+        cls,
+        track: TrackMetadata,
+        audio_format: Optional[AudioFormat] = None,
+        output_dir: Optional[Path] = None,
+        progress_callback: Optional[Callable[[float, str], None]] = None,
+        overwrite: bool = False,
+        include_lyrics: Optional[bool] = None,
+        include_cover: Optional[bool] = None,
+    ) -> Tuple[Optional[Path], bool]:
+        """
+        Downloads a track using Unified Lossless Engine (Amazon Music / Tidal / Deezer),
+        with fallback to YouTube if unavailable. Embeds metadata & cover art, and writes .lrc.
+        """
+        fmt = audio_format or config.default_format
+        dest_dir = output_dir or config.download_directory
+        final_path = format_track_path(track, dest_dir, fmt, config.folder_template)
+
+        # Duplicate check
+        if not overwrite and final_path.exists() and final_path.stat().st_size > 1024:
+            if progress_callback:
+                progress_callback(100.0, f"Ya existe en disco: {final_path.name}")
+            return final_path, False
+
+        # Resolve lyrics & cover flags
+        should_embed_cover = config.embed_cover if include_cover is None else include_cover
+        should_get_lyrics = (config.embed_lyrics or config.save_lrc_file) if include_lyrics is None else include_lyrics
+
+        resolution: Optional[StreamResolution] = None
+        download_success = False
+
+        # 1. Primary: Attempt Lossless download via Unified Engine (Amazon CENC / Tidal / Deezer)
+        if config.prefer_lossless_source:
+            if progress_callback:
+                progress_callback(10.0, "Consultando motor Lossless (Amazon / Tidal / Deezer)...")
+
+            resolution = UnifiedEngine.resolve_stream(track, fmt)
+            if resolution:
                 if progress_callback:
-                    progress_callback(0.0, f"Error: {e}")
-                print(f"[Error] Falló la descarga de {track.title}: {e}")
+                    progress_callback(20.0, f"Stream encontrado: {resolution.display_source}")
+                download_success = UnifiedEngine.download_stream(resolution, final_path, fmt, progress_callback)
+
+        # 2. Secondary: Fallback to YouTube if lossless failed or was not found
+        if not download_success:
+            if not config.allow_youtube_fallback:
+                if progress_callback:
+                    progress_callback(0.0, "No disponible en Lossless y fallback está desactivado.")
                 return None, False
+
+            resolution = StreamResolution(
+                url="youtube",
+                source="youtube",
+                quality="bestaudio",
+                is_fallback=True,
+                provider_name="YouTube Music (Fallback)"
+            )
+            if progress_callback:
+                progress_callback(15.0, "⚠ No disponible en Lossless. Descargando desde YouTube Music...")
+
+            download_success = cls._download_from_youtube(track, final_path, fmt, progress_callback)
+
+        if not download_success:
+            if progress_callback:
+                progress_callback(0.0, f"Error: No se pudo descargar {track.title}")
+            return None, False
+
+        # Store stream resolution metadata on track
+        track.stream_resolution = resolution
+
+        # 3. Fetch and embed lyrics if enabled
+        if should_get_lyrics:
+            if progress_callback:
+                progress_callback(94.0, "Obteniendo letras sincronizadas...")
+            lyrics_data = LyricsManager.fetch_lyrics(track)
+            if lyrics_data:
+                track.lyrics = lyrics_data
+                if config.save_lrc_file:
+                    LyricsManager.save_lrc_file(lyrics_data, final_path)
+
+        # 4. Tag metadata and cover art
+        if progress_callback:
+            progress_callback(98.0, "Incrustando portada HD y metadatos...")
+        MetadataTagger.apply_metadata(
+            final_path,
+            track,
+            fmt,
+            embed_cover=should_embed_cover,
+            embed_lyrics=(config.embed_lyrics and should_get_lyrics)
+        )
+
+        if progress_callback:
+            progress_callback(100.0, f"Completado: {final_path.name}")
+
+        return final_path, True
