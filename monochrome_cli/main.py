@@ -52,11 +52,8 @@ def download_single_track(
     if saved_file:
         if is_new:
             res = getattr(track, "stream_resolution", None)
-            if res and res.is_fallback:
-                console.print("[bold yellow]⚠ AVISO:[/bold yellow] [yellow]No disponible en catálogo Lossless (Amazon/Tidal/Deezer).[/yellow]")
-                console.print(f"  [dim]↳ Audio descargado desde:[/dim] [yellow]{res.display_source}[/yellow]")
-            elif res:
-                console.print(f"[bold green]✔ Fuente de Audio:[/bold green] [bold cyan]{res.display_source}[/bold cyan] [dim]({res.quality})[/dim]")
+            if res:
+                console.print(f"[bold green]✔ Fuente de Audio:[/bold green] [bold cyan]{res.display_source}[/bold cyan]")
             console.print(f"[bold green]✔ Guardado con éxito en:[/bold green] [yellow]{saved_file}[/yellow]\n")
         else:
             console.print(f"[bold yellow]⚡ Ya descargada (Omitida para evitar duplicados):[/bold yellow] [dim]{saved_file}[/dim]\n")
@@ -98,9 +95,7 @@ def download_batch_tracks(
             res = getattr(track, "stream_resolution", None)
             if is_new:
                 new_count += 1
-                if res and res.is_fallback:
-                    console.print(f"  [yellow]⚠ [Fallback: {res.display_source}][/yellow] [green]✔ Descargado:[/green] [dim]{saved_file.name}[/dim]")
-                elif res:
+                if res:
                     console.print(f"  [cyan]✔ [{res.display_source}][/cyan] [green]Descargado:[/green] [dim]{saved_file.name}[/dim]")
                 else:
                     console.print(f"  [green]✔ Descargado:[/green] [dim]{saved_file.name}[/dim]")

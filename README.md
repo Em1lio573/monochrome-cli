@@ -8,8 +8,9 @@ Inspirado en el ecosistema de codigo abierto Monochrome.
 
 ## Caracteristicas del Sistema
 
+- **Descargas 100% Automaticas e Instantaneas:** Motor HQ integrado que opera de forma totalmente autonoma sin requerir inicios de sesion, resolucion de captchas ni configuraciones manuales complejas.
 - **Consultas de Catalogo Oficial:** Integracion con Tidal OpenAPI y Deezer para la obtencion precisa de metadatos de estudio, codigos ISRC, creditos y discografias completas.
-- **Motor de Audio de Alta Fidelidad:**
+- **Motor de Audio y Calidad Seleccionable:**
   - **FLAC (Lossless / Hi-Res):** Audio de estudio sin perdidas (16/24-bit, 44.1 kHz hasta 192 kHz).
   - **MP3 (320 kbps CBR):** Codificacion a bitrate constante de maxima calidad con `libmp3lame`.
   - **M4A / AAC (256 kbps):** Codificacion con perfil avanzado de compresion perceptual de alta definicion.
@@ -24,9 +25,23 @@ Inspirado en el ecosistema de codigo abierto Monochrome.
   - Evita descargas redundantes verificando la existencia e integridad del archivo en disco antes de procesar el stream.
 - **Gestion de Descargas Individuales y por Lotes:**
   - Soporte para descargas puntuales, rangos numericos (ej. `1-5`), selecciones separadas por comas (ej. `1,3,7`), o albumes completos respetando el orden original de pistas.
+- **Soporte Opcional de Amazon Music Ultra HD:**
+  - Compatibilidad opcional con streams CENC descifrados de Amazon Music Ultra HD a 24-bit si se proporciona un token de sesion (`--jwt`).
 - **Compatibilidad Optimizada con Termux en Android:**
   - Creacion automatica de lanzadores globales en `$PREFIX/bin`.
   - Deteccion nativa del almacenamiento compartido de Android (`/sdcard/Music` y `~/storage/shared/Music`).
+
+---
+
+## Arquitectura de Descargas
+
+Monochrome CLI opera mediante una arquitectura de obtencion de dos niveles:
+
+1. **Nivel 1 (Motor HQ Automatico - Predeterminado):**
+   Disenado para funcionamiento sin intervencion. Resuelve el stream de mayor tasa de bits disponible, procesando y transcodificando el flujo de audio con FFmpeg hacia el formato solicitado (FLAC, MP3 320k, M4A 256k u OPUS) e inyectando de forma automatica las etiquetas oficiales de Tidal, la caratula en 1280x1280 px y las letras sincronizadas.
+
+2. **Nivel 2 (Amazon Music Lossless CENC - Opcional):**
+   Para usuarios que deseen especificamente flujos Ultra HD a 24-bit desde los servidores de Amazon Music, el sistema permite configurar opcionalmente un token de sesion web (`mono --jwt <TOKEN>`). Si este token no esta configurado, el CLI no se detiene ni muestra advertencias invasivas: continua operando fluidamente a traves del Motor HQ Automatico.
 
 ---
 

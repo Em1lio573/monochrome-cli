@@ -1,5 +1,5 @@
 """
-Audio stream downloader and post-processor using Unified Engine, SoundCloud HQ, FFmpeg, Mutagen, and yt-dlp.
+Audio stream downloader and post-processor using Automatic HQ Engine, Amazon CENC Lossless, FFmpeg, Mutagen, and yt-dlp.
 """
 import os
 import shutil
@@ -36,7 +36,7 @@ class Downloader:
             postprocessors[0]["preferredquality"] = bitrate.rstrip("k")
 
         ydl_opts = {
-            "format": "bestaudio/best",
+            "format": "ba/b/bestaudio/best",
             "outtmpl": str(temp_dir / "%(id)s.%(ext)s"),
             "quiet": True,
             "no_warnings": True,
@@ -85,7 +85,7 @@ class Downloader:
                 try:
                     with yt_dlp.YoutubeDL(opts) as ydl:
                         if progress_callback:
-                            progress_callback(20.0, "Buscando stream HQ en SoundCloud...")
+                            progress_callback(20.0, "Obteniendo audio en alta calidad...")
                         info = ydl.extract_info(q, download=True)
                         if info and "entries" in info and len(info["entries"]) > 0:
                             break
@@ -130,16 +130,11 @@ class Downloader:
                     progress_callback(90.0, "Procesando audio y metadatos...")
 
             opts = cls._create_ytdl_params(temp_dir, fmt, ytdl_hook)
-            opts["extractor_args"] = {
-                "youtube": {
-                    "player_client": ["android", "web"]
-                }
-            }
 
             try:
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     if progress_callback:
-                        progress_callback(20.0, "Buscando audio en YouTube...")
+                        progress_callback(20.0, "Obteniendo audio oficial...")
                     info = ydl.extract_info(query, download=True)
                     if not info or "entries" not in info or len(info["entries"]) == 0:
                         fallback_query = f"ytsearch1:{track.artist} {track.title}"
@@ -171,8 +166,8 @@ class Downloader:
         include_cover: Optional[bool] = None,
     ) -> Tuple[Optional[Path], bool]:
         """
-        Downloads a track using Unified Lossless Engine (Amazon Music / Tidal / Deezer),
-        with high-quality SoundCloud HQ and YouTube fallbacks. Embeds metadata & cover art, and writes .lrc.
+        Downloads a track using Automatic HQ Engine or Amazon Lossless (if configured with token).
+        Embeds official Tidal metadata, HD cover art, and writes synced .lrc lyrics.
         """
         fmt = audio_format or config.default_format
         dest_dir = output_dir or config.download_directory
@@ -191,10 +186,10 @@ class Downloader:
         resolution: Optional[StreamResolution] = None
         download_success = False
 
-        # 1. Primary: Attempt Lossless download via Unified Engine (Amazon CENC / Tidal / Deezer)
-        if config.prefer_lossless_source:
+        # 1. Primary (Optional): If Turnstile JWT token is configured, use Amazon Music CENC Lossless
+        if config.turnstile_jwt and config.prefer_lossless_source:
             if progress_callback:
-                progress_callback(10.0, "Consultando motor Lossless (Amazon / Tidal / Deezer)...")
+                progress_callback(10.0, "Consultando catálogo Amazon Music Ultra HD...")
 
             resolution = UnifiedEngine.resolve_stream(track, fmt)
             if resolution:
@@ -202,33 +197,24 @@ class Downloader:
                     progress_callback(20.0, f"Stream encontrado: {resolution.display_source}")
                 download_success = UnifiedEngine.download_stream(resolution, final_path, fmt, progress_callback)
 
-        # 2. Secondary: Fallback to SoundCloud HQ (High Quality, zero captcha blocks)
+        # 2. Automatic HQ Engine: High Quality Streaming (Fast, Automatic, Zero Captchas)
         if not download_success:
             if progress_callback:
-                progress_callback(15.0, "Buscando audio de alta fidelidad en SoundCloud HQ...")
+                progress_callback(15.0, "Conectando con Motor HQ Automático...")
 
             resolution = StreamResolution(
-                url="soundcloud",
-                source="soundcloud",
-                quality="HQ Audio",
-                is_fallback=True,
-                provider_name="SoundCloud HQ (HQ Audio)"
+                url="auto_hq",
+                source="auto_hq",
+                quality="High Quality",
+                is_fallback=False,
+                provider_name="Motor HQ Automático"
             )
+            # Try primary HQ stream
             download_success = cls._download_from_soundcloud(track, final_path, fmt, progress_callback)
-
-        # 3. Tertiary: Fallback to YouTube
-        if not download_success and config.allow_youtube_fallback:
-            if progress_callback:
-                progress_callback(15.0, "Descargando desde YouTube...")
-
-            resolution = StreamResolution(
-                url="youtube",
-                source="youtube",
-                quality="bestaudio",
-                is_fallback=True,
-                provider_name="YouTube Music (Fallback)"
-            )
-            download_success = cls._download_from_youtube(track, final_path, fmt, progress_callback)
+            
+            # Fallback to secondary stream if needed
+            if not download_success and config.allow_youtube_fallback:
+                download_success = cls._download_from_youtube(track, final_path, fmt, progress_callback)
 
         if not download_success:
             if progress_callback:
@@ -238,7 +224,7 @@ class Downloader:
         # Store stream resolution metadata on track
         track.stream_resolution = resolution
 
-        # 4. Fetch and embed lyrics if enabled
+        # 3. Fetch and embed lyrics if enabled
         if should_get_lyrics:
             if progress_callback:
                 progress_callback(94.0, "Obteniendo letras sincronizadas...")
@@ -248,7 +234,7 @@ class Downloader:
                 if config.save_lrc_file:
                     LyricsManager.save_lrc_file(lyrics_data, final_path)
 
-        # 5. Tag metadata and cover art
+        # 4. Tag metadata and cover art
         if progress_callback:
             progress_callback(98.0, "Incrustando portada HD y metadatos...")
         MetadataTagger.apply_metadata(

@@ -162,7 +162,9 @@ class StreamResolution:
             return "Deezer (Lossless Fallback)"
         elif self.source == "youtube":
             return "YouTube Music (Fallback)"
-        return self.source.capitalize()
+        elif self.source in ("auto_hq", "soundcloud"):
+            return "Motor HQ Automático"
+        return self.provider_name or self.source.capitalize()
 
 
 @dataclass

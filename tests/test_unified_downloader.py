@@ -132,9 +132,9 @@ class TestUnifiedEngine(unittest.TestCase):
 
             self.assertTrue(is_new)
             self.assertIsNotNone(track.stream_resolution)
-            self.assertTrue(track.stream_resolution.is_fallback)
-            self.assertEqual(track.stream_resolution.source, "soundcloud")
-            print("  ✔ Fallback to SoundCloud HQ and metadata tracking verified!")
+            self.assertEqual(track.stream_resolution.source, "auto_hq")
+            self.assertIn("Motor HQ", track.stream_resolution.display_source)
+            print("  ✔ Motor HQ Automático and metadata tracking verified!")
 
 
 if __name__ == "__main__":
