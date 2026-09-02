@@ -186,10 +186,10 @@ class Downloader:
         resolution: Optional[StreamResolution] = None
         download_success = False
 
-        # 1. Primary (Optional): If Turnstile JWT token is configured, use Amazon Music CENC Lossless
-        if config.turnstile_jwt and config.prefer_lossless_source:
+        # 1. Primary: Super Alta Calidad con resolución automática de navegador por detrás
+        if config.prefer_lossless_source:
             if progress_callback:
-                progress_callback(10.0, "Consultando catálogo Amazon Music Ultra HD...")
+                progress_callback(10.0, "Consultando catálogo Super Alta Calidad (Amazon / Lossless)...")
 
             resolution = UnifiedEngine.resolve_stream(track, fmt)
             if resolution:

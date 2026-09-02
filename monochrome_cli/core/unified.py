@@ -99,9 +99,17 @@ class UnifiedEngine:
 
         url = f"{base_url}/api/v2/track/?{urllib.parse.urlencode(params)}"
         headers = dict(cls.DEFAULT_HEADERS)
-        headers["Authorization"] = f"Bearer {token}"
-        if config.turnstile_jwt:
-            headers["X-Turnstile-JWT"] = config.turnstile_jwt
+        # Auto-resolve Turnstile JWT via background browser if not present or expired
+        jwt = config.turnstile_jwt
+        if not jwt:
+            try:
+                from monochrome_cli.core.browser_auth import BrowserAuth
+                jwt = BrowserAuth.get_valid_jwt()
+            except Exception:
+                jwt = None
+
+        if jwt:
+            headers["X-Turnstile-JWT"] = jwt
 
         try:
             req = urllib.request.Request(url, headers=headers)
